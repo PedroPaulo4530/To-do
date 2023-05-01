@@ -38,7 +38,7 @@ exports.loginUser = async (req, res) => {
     }
 
     // Se chegou aqui, as credenciais são válidas e o usuário está autenticado
-    res.status(200).json(user);
+    res.status(200).json({ userId: user._id });
   } catch (err) {
     console.error(err);
     res.status(500).send("Erro ao fazer login.");

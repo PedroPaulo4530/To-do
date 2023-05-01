@@ -1,26 +1,116 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Input, Button, List, DatePicker, Modal } from "antd";
 import "./todos.css";
+import axios from "axios";
+import queryString from "query-string";
+import moment from "moment";
 
 const Todos = () => {
   const [searchText, setSearchText] = useState("");
   const [tasks, setTasks] = useState([]);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [taskDeadline, setTaskDeadline] = useState(null);
+  const [taskdeadLine, setTaskdeadLine] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [editedTask, setEditedTask] = useState({});
   const [editTaskTitle, setEditedTaskTitle] = useState("");
   const [editTaskDescription, setEditedTaskDescription] = useState("");
-  const [editTaskDeadline, setEditedTaskDeadline] = useState(null);
+  const [editTaskdeadLine, setEditedTaskdeadLine] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      setLoading(true);
+      const queryParams = queryString.parse(window.location.search);
+      const user = queryParams.userId;
+      console.log(user);
+      try {
+        const response = await axios.get(
+          `http://localhost:3001/tasks/user/${user}`
+        );
+        console.log(response);
+        console.log(response.data);
+        if (response.data) {
+          const formattedTasks = response.data.map((task) => {
+            return {
+              ...task,
+              deadLine: moment(task.deadLine).format("DD-MM-YYYY"),
+            };
+          });
+          setTasks(formattedTasks);
+          console.log(formattedTasks);
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, []);
+
+  const deleteTask = (id) => {
+    axios
+      .delete(`http://localhost:3001/tasks/delete/${id}`)
+      .then(() => {
+        setTasks(tasks.filter((task) => task._id !== id));
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  };
+
+  const updateTask = async (id, updatedTask) => {
+    try {
+      const formattedDeadLine = moment(
+        updatedTask.deadLine,
+        "DD/MM/YYYY"
+      ).format(); // formata a data como ISO8601
+
+      const response = await axios.put(
+        `http://localhost:3001/tasks/update/${id}`,
+        { ...updatedTask, deadLine: formattedDeadLine }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(error);
+      throw new Error("Failed to update task");
+    }
+  };
+
+  // função para criar nova tarefa
+  const createTask = () => {
+    const queryParams = queryString.parse(window.location.search);
+    const userId = queryParams.userId;
+    const formatteddeadLine = moment(taskdeadLine, "DD/MM/YYYY").format(
+      "YYYY-MM-DD"
+    );
+    axios
+      .post("http://localhost:3001/create/task", {
+        title: taskTitle,
+        description: taskDescription,
+        deadLine: formatteddeadLine,
+        user: userId, // adiciona o ID do cliente
+      })
+      .then((response) => {
+        setTasks([...tasks, response.data]);
+        setTaskTitle("");
+        setTaskDescription("");
+        setTaskdeadLine(null);
+        setIsModalVisible(false);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  };
 
   const showEditModal = (task) => {
     setSelectedTask(task);
     setEditedTaskTitle(task.title);
     setEditedTaskDescription(task.description);
-    setEditedTaskDeadline(task.deadline);
+    setEditedTaskdeadLine(task.deadLine);
     setEditModalVisible(true);
   };
 
@@ -29,7 +119,7 @@ const Todos = () => {
     setEditedTask({});
     setEditedTaskTitle("");
     setEditedTaskDescription("");
-    setEditedTaskDeadline(null);
+    setEditedTaskdeadLine(null);
     setEditModalVisible(false);
   };
 
@@ -45,23 +135,12 @@ const Todos = () => {
         title="Add New Task"
         visible={isModalVisible}
         onOk={() => {
-          setTasks([
-            ...tasks,
-            {
-              title: taskTitle,
-              description: taskDescription,
-              deadline: taskDeadline,
-            },
-          ]);
-          setTaskTitle("");
-          setTaskDescription("");
-          setTaskDeadline(null);
-          setIsModalVisible(false);
+          createTask();
         }}
         onCancel={() => {
           setTaskTitle("");
           setTaskDescription("");
-          setTaskDeadline(null);
+          setTaskdeadLine(null);
           setIsModalVisible(false);
         }}
       >
@@ -81,7 +160,9 @@ const Todos = () => {
         <br />
         <DatePicker
           format="DD-MM-YYYY"
-          onChange={(date, dateString) => setTaskDeadline(dateString)}
+          onChange={(date, dateString) => {
+            if (dateString) setTaskdeadLine(dateString);
+          }}
         />
       </Modal>
       <br />
@@ -109,10 +190,7 @@ const Todos = () => {
               <Button
                 type="danger"
                 onClick={() => {
-                  setTasks([
-                    ...tasks.slice(0, index),
-                    ...tasks.slice(index + 1),
-                  ]);
+                  deleteTask(task._id);
                 }}
               >
                 Delete
@@ -121,24 +199,32 @@ const Todos = () => {
           >
             <List.Item.Meta
               title={task.title}
-              description={`${task.description} - ${task.deadline}`}
+              description={`${task.description} - ${String(task.deadLine)}`}
             />
             <Modal
               title="Edit Task"
               visible={editModalVisible}
               onOk={() => {
-                const updatedTasks = tasks.map((task) =>
-                  task === selectedTask
-                    ? {
-                        ...task,
-                        title: editTaskTitle,
-                        description: editTaskDescription,
-                        deadline: editTaskDeadline,
-                      }
-                    : task
-                );
-                setTasks(updatedTasks);
-                hideEditModal();
+                const updatedTask = {
+                  title: editTaskTitle,
+                  description: editTaskDescription,
+                  deadLine: editTaskdeadLine,
+                };
+
+                updateTask(selectedTask._id, updatedTask)
+                  .then(() => {
+                    const updatedTasks = tasks.map((task) =>
+                      task._id === selectedTask._id
+                        ? { ...task, ...updatedTask }
+                        : task
+                    );
+                    setTasks(updatedTasks);
+                    hideEditModal();
+                  })
+                  .catch((error) => {
+                    console.error(error);
+                    // Exibir uma mensagem de erro ao usuário
+                  });
               }}
               onCancel={() => {
                 hideEditModal();
@@ -163,7 +249,7 @@ const Todos = () => {
               <DatePicker
                 format="DD-MM-YYYY"
                 onChange={(date, dateString) =>
-                  setEditedTaskDeadline(dateString)
+                  setEditedTaskdeadLine(dateString)
                 }
               />
             </Modal>

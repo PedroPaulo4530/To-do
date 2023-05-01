@@ -31,11 +31,12 @@ app.put("/users/update/:id", userController.updateUserById);
 app.delete("/users/delete/:id", userController.deleteUserById);
 
 // TASK ROUTES
-app.post("/tasks/create", taskController.createTask);
+app.post("/create/task", taskController.createTask);
 app.get("/tasks", taskController.getTasks);
 app.get("/tasks/:id", taskController.getTaskById);
 app.put("/tasks/update/:id", taskController.updateTaskById);
 app.delete("/tasks/delete/:id", taskController.deleteTaskById);
+app.get("/tasks/user/:user", taskController.getUserTasks);
 
 app.listen(process.env.PORT, () =>
   console.log(`Server running on port ${process.env.PORT}`)

@@ -3,11 +3,11 @@ const Task = require("../models/task.js");
 // Rota para cadastrar uma nova tarefa
 exports.createTask = async (req, res) => {
   try {
-    const { title, description, completed, user } = req.body;
+    const { title, description, deadLine, user } = req.body;
     const newTask = new Task({
       title,
       description,
-      completed,
+      deadLine,
       user,
     });
     const savedTask = await newTask.save();
@@ -45,10 +45,10 @@ exports.getTaskById = async (req, res) => {
 exports.updateTaskById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, completed, user } = req.body;
+    const { title, description, deadLine, user } = req.body;
     const updatedTask = await Task.findByIdAndUpdate(
       id,
-      { title, description, completed, user },
+      { title, description, deadLine: new Date(deadLine), user },
       { new: true }
     );
     res.status(200).json(updatedTask);
@@ -67,5 +67,17 @@ exports.deleteTaskById = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Erro ao deletar tarefa.");
+  }
+};
+
+// Rota para buscar todas as tarefas de um usuário pelo ID
+exports.getUserTasks = async (req, res) => {
+  try {
+    const { user } = req.params;
+    const tasks = await Task.find({ user: user });
+    res.status(200).json(tasks);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Erro ao buscar tarefas do usuário.");
   }
 };

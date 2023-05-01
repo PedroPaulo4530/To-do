@@ -6,17 +6,12 @@ const taskSchema = new mongoose.Schema({
     required: true,
   },
   description: String,
-  completed: {
-    type: Boolean,
-    default: false,
-  },
-  dueDate: {
+  deadLine: {
     type: Date,
     required: true,
   },
   user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    type: String,
     required: true,
   },
 });

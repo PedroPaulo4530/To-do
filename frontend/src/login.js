@@ -3,6 +3,8 @@ import { Form, Input, Button } from "antd";
 import "./login.css";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import queryString from "query-string";
+
 const Login = () => {
   const onFinish = async (values) => {
     try {
@@ -11,8 +13,12 @@ const Login = () => {
         password: values.password,
       });
       // Autenticação bem sucedida, redireciona para a página principal
-      console.log(response.data);
-      history("/todos");
+      const userId = response.data.userId;
+      const queryParams = {
+        userId: userId,
+      };
+      const query = queryString.stringify(queryParams);
+      history(`/todos?${query}`);
     } catch (error) {
       alert("Usuário ou senha inválidos");
     }
