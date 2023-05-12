@@ -1,15 +1,50 @@
-version: '3'
+version: '3.8'
+
 services:
-  app:
-    build: .
-    ports:
-      - "8080:3000"
+  mongo:
+    image: mongo:latest
+    container_name: mongo-container
     environment:
-      - NODE_ENV=production
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: pass
+      MONGO_INITDB_DATABASE: to-do # Nome do banco de dados
+    restart: unless-stopped
+    ports:
+      - "27017:27017" 
+    volumes:
+      - mongodb-data:/data/db
+      - ./backend/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.js:ro
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: to-do-backend
+    restart: unless-stopped
+    environment:
+      - DB_CONNECTION_STRING=mongodb://mongo:27017/to-do
+      - PORT=3001
+    ports:
+      - "3001:3001"
     depends_on:
       - mongo
-  mongo:
-    image: mongo
-    restart: always
+  
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: to-do-frontend
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:3001/api
     ports:
-      - "27017:27017"
+      - "80:3000"
+
+volumes:
+  mongodb-data:
+    driver: local
+
+networks:
+  default:
+    external:
+      name: nat
